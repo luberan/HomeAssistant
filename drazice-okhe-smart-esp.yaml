@@ -1,0 +1,66 @@
+esphome:
+  name: bojler
+  friendly_name: Bojler
+
+esp32:
+  board: nodemcu-32s
+  framework:
+    type: arduino
+
+substitutions:
+  mac_water_heater: xx:xx:xx:xx:xx:xx              # MAC adresa BT bojleru zde
+
+external_components:
+  - source: 
+      type: git
+      url: https://github.com/pedobry/esphome-smartboiler
+    components: [smartboiler]
+
+# Enable logging
+logger:
+  level: info
+
+# Enable Home Assistant API
+api:
+
+ble_client:
+  - mac_address: ${mac_water_heater}
+    id: drazice_okhe
+    
+ota:
+  - platform: esphome
+    password: !secret ota
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+smartboiler:
+  - ble_client_id: drazice_okhe
+    temp1:
+      name: "Water heater temp1"
+    temp2:
+      name: "Water heater temp2"
+    mode:
+      name: "Water heater mode"
+    thermostat:
+      name: "Water heater thermostat"
+    heat_on:
+      name: "Water heater heat"
+    hdo_low_tariff:
+      name: "Water heater HDO"
+    pin:
+      name: "Water heater PIN"
+    state:
+      name: "Water heater state"
+    version:
+      name: "Water heater version"
+    b_name:
+      name: "Water heater name"
+    consumption:
+      name: "Water heater energy"
+
+switch:
+  - platform: ble_client
+    ble_client_id: drazice_okhe
+    name: "Enable water heater monitoring"
