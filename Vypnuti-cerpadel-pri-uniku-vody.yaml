@@ -1,0 +1,19 @@
+alias: Vypnout cerpadla pri zaplave
+description: ''
+trigger:
+  - type: moist
+    platform: device
+    device_id: aaaaa
+    entity_id: binary_sensor.senzor_zaplavy_technickamistnost_water_leak
+    domain: binary_sensor
+condition: []
+action:
+  - type: turn_off
+    device_id: aaaaa
+    entity_id: switch.shelly_cerpadlo_retencka
+    domain: switch
+  - type: turn_off
+    device_id: aaaaa
+    entity_id: switch.shelly_cerpadlo_studna
+    domain: switch
+mode: single
