@@ -1,0 +1,26 @@
+alias: Zatahnout zaluzie pri teple venku dopoledne
+description: ''
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.prumerna_venkovni_teplota
+    above: '17'
+condition:
+  - condition: and
+    conditions:
+      - condition: time
+        after: '06:30:00'
+        before: '12:00:00'
+      - condition: numeric_state
+        entity_id: sensor.netatmo_selfiehome_loznice_vitr_wind_strength
+        below: '35'
+      - condition: device
+        device_id: aaaaa
+        domain: alarm_control_panel
+        entity_id: alarm_control_panel.jablotron_sekce_vse
+        type: is_disarmed
+      - condition: state
+        entity_id: sensor.lukas_iphone_battery_state
+        state: Not Charging
+action:
+  - scene: scene.rano_2
+mode: single
