@@ -1,0 +1,8 @@
+    - name: "Celková výroba energie"
+      state: "{{ states('sensor.solax_garage_total') }}"
+      availability: "{{ states('sensor.solax_garage_total') | float > 0 }}"
+      unit_of_measurement: "kWh"
+      state_class: total_increasing
+      device_class: energy
+      attributes:
+        last_reset: "1970-01-01T00:00:00+00:00"
