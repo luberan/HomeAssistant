@@ -1,0 +1,13 @@
+alias: Notifikace kdyz trouba skonci
+description: ''
+trigger:
+  - platform: state
+    entity_id: sensor.pecici_trouba_operation_state
+    to: Finished
+condition: []
+action:
+  - service: notify.telefony
+    data:
+      title: Trouba skončila
+      message: Hotovo, trouba dokončila vybraný program. Dobrou chuť!
+mode: single
