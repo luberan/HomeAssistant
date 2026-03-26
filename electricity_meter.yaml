@@ -1,0 +1,30 @@
+- trigger:
+    - platform: state
+      entity_id: sensor.celkova_energie_poslana_do_site
+  sensor:
+    - name: "Cena prodane elektriny celkem"
+      unique_id: electricity_sold_price_total
+      #device_class: monetary
+      unit_of_measurement: "CZK"
+      state: >
+        {% set price = float(states('sensor.current_spot_electricity_price'),0) %}
+        {% set meter = float(states('sensor.celkova_energie_poslana_do_site'),0) %}
+        {% if meter > 0 and this.attributes.last is defined %}
+           {% set delta = meter - float(this.attributes.last,0) %}
+        {% else %}
+           {% set delta = 0 %}
+        {% endif %}
+        {{ '%0.6f'|format( price * delta  ) }}
+      attributes:
+        last: >
+          {% if this.attributes.last is defined %}
+            {% set lastlast = float(this.attributes.last,0) %}
+          {% else %}
+            {% set lastlast = 0 %}
+          {% endif %}
+          {% set meter = float(states('sensor.celkova_energie_poslana_do_site'),0) %}
+          {% if meter > 0 %}
+            {{ meter }}
+          {% else %}
+            {{ lastlast }}
+          {% endif %}
