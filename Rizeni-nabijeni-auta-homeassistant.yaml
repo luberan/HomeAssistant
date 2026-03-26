@@ -1,0 +1,164 @@
+alias: Řízení nabíjení auta
+description: >-
+  Komplexní řízení wallboxu na základě zvoleného režimu z input_select, s
+  absolutní prioritou nabíjení plným výkonem při záporné nákupní ceně.
+mode: restart
+triggers:
+  - trigger: state
+    entity_id: input_select.rezim_nabijeni_auta
+  - trigger: state
+    entity_id: sensor.solaxwallboxgaraz_run_mode
+  - trigger: numeric_state
+    entity_id: sensor.solax_battery_capacity
+    above: 95
+  - trigger: numeric_state
+    entity_id: sensor.solax_battery_capacity
+    below: 90
+  - trigger: numeric_state
+    entity_id:
+      - sensor.current_sell_electricity_price_15min
+    below: 0
+  - trigger: numeric_state
+    entity_id:
+      - sensor.current_sell_electricity_price_15min
+    above: 0
+  - trigger: numeric_state
+    entity_id:
+      - sensor.current_buy_electricity_price_15min
+    below: 0
+  - trigger: numeric_state
+    entity_id:
+      - sensor.current_buy_electricity_price_15min
+    above: 0
+  - trigger: state
+    entity_id:
+      - binary_sensor.buy_electricity_is_cheapest_1_hours_block_15min
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.current_buy_electricity_price_15min
+            below: 0
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: sensor.solaxwallboxgaraz_run_mode
+                state: Available
+        sequence:
+          - device_id: DOPLN_ID_ZARIZENI_WALLBOXU
+            domain: select
+            entity_id: DOPLN_ID_ENTITY_REZYMU_WALLBOXU
+            type: select_option
+            option: Fast
+      - conditions:
+          - condition: state
+            entity_id: input_select.rezim_nabijeni_auta
+            state:
+              - Nabíjet auto při záporné prodejní ceně
+          - condition: numeric_state
+            entity_id: sensor.current_sell_electricity_price_15min
+            below: 0
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: sensor.solaxwallboxgaraz_run_mode
+                state: Available
+          - condition: or
+            conditions:
+              - condition: numeric_state
+                entity_id: sensor.solax_battery_capacity
+                above: 95
+              - condition: and
+                conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.solax_battery_capacity
+                    above: 90
+                  - condition: state
+                    entity_id: select.DOPLN_ENTITU_PRO_KONTROLU_REZYMU_WALLBOXU
+                    state:
+                      - Green
+        sequence:
+          - device_id: DOPLN_ID_ZARIZENI_WALLBOXU
+            domain: select
+            entity_id: DOPLN_ID_ENTITY_REZYMU_WALLBOXU
+            type: select_option
+            option: Green
+      - conditions:
+          - condition: state
+            entity_id: input_select.rezim_nabijeni_auta
+            state:
+              - Nabíjet auto z přetoků
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: sensor.solaxwallboxgaraz_run_mode
+                state: Available
+          - condition: or
+            conditions:
+              - condition: numeric_state
+                entity_id: sensor.solax_battery_capacity
+                above: 95
+              - condition: and
+                conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.solax_battery_capacity
+                    above: 90
+                  - condition: state
+                    entity_id: select.DOPLN_ENTITU_PRO_KONTROLU_REZIMU_WALLBOXU
+                    state:
+                      - Green
+        sequence:
+          - device_id: DOPLN_ID_ZARIZENI_WALLBOXU
+            domain: select
+            entity_id: DOPLN_ID_ENTITY_REZIMU_WALLBOXU
+            type: select_option
+            option: Green
+      - conditions:
+          - condition: state
+            entity_id: input_select.rezim_nabijeni_auta
+            state:
+              - Nabíjet auto při nejlevnější elektřině
+          - condition: state
+            entity_id: binary_sensor.buy_electricity_is_cheapest_1_hours_block_15min
+            state:
+              - "on"
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: sensor.solaxwallboxgaraz_run_mode
+                state: Available
+        sequence:
+          - device_id: DOPLN_ID_ZARIZENI_WALLBOXU
+            domain: select
+            entity_id: DOPLN_ID_ENTITY_REZIMU_WALLBOXU
+            type: select_option
+            option: Fast
+      - conditions:
+          - condition: state
+            entity_id: input_select.rezim_nabijeni_auta
+            state:
+              - Nabíjet auto maximálním výkonem
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: sensor.solaxwallboxgaraz_run_mode
+                state: Available
+        sequence:
+          - device_id: DOPLN_ID_ZARIZENI_WALLBOXU
+            domain: select
+            entity_id: DOPLN_ID_ENTITY_REZIMU_WALLBOXU
+            type: select_option
+            option: Fast
+    default:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.solaxwallboxgaraz_run_mode
+            state:
+              - Available
+      - device_id: DOPLN_ID_ZARIZENI_WALLBOXU
+        domain: select
+        entity_id: DOPLN_ID_ENTITY_REZIMU_WALLBOXU
+        type: select_option
+        option: Stop
