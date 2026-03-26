@@ -1,0 +1,41 @@
+esphome:
+  name: voda-vodovod
+  friendly_name: voda-vodovod
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "xxxxx"
+
+ota:
+  - platform: esphome
+    password: "xxxxx"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Voda-Vodovod Fallback Hotspot"
+    password: "xxxx"
+
+captive_portal:
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 4
+      mode: INPUT_PULLUP
+    name: "Vodovod impulzy"
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
