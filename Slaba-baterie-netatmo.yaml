@@ -1,0 +1,19 @@
+alias: Baterie Netatmo ma mene nez 20 %
+description: ''
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.netatmo_selfiehome_loznice_dest_battery_percent
+    below: '20'
+  - platform: numeric_state
+    entity_id: sensor.netatmo_selfiehome_loznice_venkovni_battery_percent
+    below: '20'
+  - platform: numeric_state
+    entity_id: sensor.netatmo_selfiehome_loznice_vitr_battery_percent
+    below: '20'
+condition: []
+action:
+  - service: notify.notify
+    data:
+      message: Baterie v některém Netatmo zařízení dosáhla 20 %.
+      title: Slabá baterie v Netatmo
+mode: single
