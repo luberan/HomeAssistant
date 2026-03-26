@@ -1,0 +1,19 @@
+alias: Notifikace pri zaplaveni
+description: ''
+trigger:
+  - type: moist
+    platform: device
+    device_id: aaaaa
+    entity_id: binary_sensor.senzor_zaplavy_technickamistnost_water_leak
+    domain: binary_sensor
+condition: []
+action:
+  - service: notify.notify
+    data:
+      title: Detekce záplavy v technické místnosti
+      message: Senzor zaplavení detekoval únik vody v technické místnosti.
+  - service: notify.telefony
+    data:
+      message: Senzor zaplavení detekoval únik vody v technické místnosti.
+      title: Detekce záplavy v technické místnosti
+mode: single
