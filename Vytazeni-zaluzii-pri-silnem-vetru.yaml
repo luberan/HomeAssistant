@@ -1,0 +1,10 @@
+alias: Otevrit zaluzie pri silnem vetru
+description: ''
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.netatmo_selfiehome_loznice_vitr_wind_strength
+    above: '30'
+condition: []
+action:
+  - scene: scene.vytahnout_zaluzie_3
+mode: single
