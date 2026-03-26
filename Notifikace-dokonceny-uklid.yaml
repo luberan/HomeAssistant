@@ -1,0 +1,14 @@
+alias: Notifikace pri dokonceni uklidu
+description: ''
+trigger:
+  - platform: state
+    entity_id: sensor.vacuum
+    to: Ready
+    from: Clean
+condition: []
+action:
+  - service: notify.telefony
+    data:
+      title: Debordelizace dokončena
+      message: Simon dokončil vysávání
+mode: single
