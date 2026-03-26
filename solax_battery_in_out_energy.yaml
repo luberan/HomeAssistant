@@ -1,0 +1,10 @@
+sensor.total_battery_out:
+  last_reset: '2021-10-10T00:00:00+00:00'
+  state_class: total
+  device_class: energy
+  value_template: '{{value|round(2)}}'
+sensor.total_battery_in:
+  last_reset: '2021-10-10T00:00:00+00:00'
+  state_class: total
+  device_class: energy
+  value_template: '{{value|round(2)}}'
