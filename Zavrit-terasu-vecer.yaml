@@ -1,0 +1,9 @@
+alias: Zavrit terasu v 22:00
+description: ''
+trigger:
+  - platform: time
+    at: '22:00'
+condition: []
+action:
+  - scene: scene.zavrit_terasu_2
+mode: single
