@@ -1,0 +1,23 @@
+alias: Zatahnout zaluzie pri prichodu domu po setmeni
+description: ''
+trigger:
+  - platform: zone
+    entity_id: person.lukas_beran
+    zone: zone.home
+    event: enter
+  - platform: zone
+    entity_id: person.eva_sovova
+    zone: zone.home
+    event: enter
+condition:
+  - condition: and
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.netatmo_selfiehome_loznice_vitr_wind_strength
+        below: '35'
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+action:
+  - scene: scene.vse_zatazeno_2
+mode: single
