@@ -1,0 +1,31 @@
+alias: Zapni cerpadla pri nepritomnosti kvuli zalevani zahrady
+description: ''
+trigger:
+  - platform: time
+    at: '20:45:00'
+condition:
+  - condition: and
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.netatmo_selfiehome_loznice_dest_rain_today
+        below: '1'
+      - condition: device
+        device_id: aaaaa
+        domain: alarm_control_panel
+        entity_id: alarm_control_panel.jablotron_sekce_vse
+        type: is_armed_away
+action:
+  - type: turn_on
+    device_id: aaaaa
+    entity_id: switch.shelly_cerpadlo_retencka
+    domain: switch
+  - delay:
+      hours: 0
+      minutes: 45
+      seconds: 0
+      milliseconds: 0
+  - type: turn_off
+    device_id: aaaaa
+    entity_id: switch.shelly_cerpadlo_retencka
+    domain: switch
+mode: single
