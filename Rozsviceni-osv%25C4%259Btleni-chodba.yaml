@@ -1,0 +1,35 @@
+alias: Rozsviceni bludicky pri pohybu na chodbe
+description: ''
+trigger:
+  - type: motion
+    platform: device
+    device_id: aaaaa
+    entity_id: binary_sensor.jablotron_pir_chodba
+    domain: binary_sensor
+condition:
+  - condition: and
+    conditions:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      - condition: device
+        device_id: aaaaa
+        domain: alarm_control_panel
+        entity_id: alarm_control_panel.jablotron_sekce_vse
+        type: is_disarmed
+action:
+  - type: turn_on
+    device_id: aaaaa
+    entity_id: light.shelly_bludicka
+    domain: light
+  - wait_for_trigger:
+      - type: no_motion
+        platform: device
+        device_id: aaaaa
+        entity_id: binary_sensor.jablotron_pir_chodba
+        domain: binary_sensor
+  - type: turn_off
+    device_id: aaaaa
+    entity_id: light.shelly_bludicka
+    domain: light
+mode: single
