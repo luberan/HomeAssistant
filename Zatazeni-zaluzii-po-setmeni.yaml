@@ -1,0 +1,18 @@
+alias: Zavrit zaluzie pri setmeni
+description: ''
+trigger:
+  - platform: sun
+    event: sunset
+    offset: '00:30:00'
+condition:
+  - condition: device
+    device_id: aaaaa
+    domain: alarm_control_panel
+    entity_id: alarm_control_panel.jablotron_sekce_vse
+    type: is_disarmed
+  - condition: numeric_state
+    entity_id: sensor.netatmo_selfiehome_loznice_vitr_wind_strength
+    below: '35'
+action:
+  - scene: scene.vse_zatazeno_2
+mode: single
