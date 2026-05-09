@@ -1,0 +1,90 @@
+alias: "SolaX G4: Arbitráž záporných cen (15min)"
+description: "Řízení Solax střídače v době záporné nákupní ceny"
+mode: restart
+
+triggers:
+  - trigger: state
+    entity_id:
+      - sensor.current_buy_electricity_price_15min
+      - sensor.current_buy_electricity_15min_order
+  - trigger: homeassistant
+    event: start
+  - trigger: event
+    event_type: automation_reloaded
+
+conditions:
+  - condition: template
+    value_template: >
+      {{ is_number(states('sensor.current_buy_electricity_price_15min')) and
+         is_number(states('sensor.current_buy_electricity_15min_order')) }}
+
+actions:
+  - choose:
+      # --- KLADNÁ CENA (Návrat do normálu) ---
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.current_buy_electricity_price_15min
+            above: -0.0001
+        sequence:
+          - action: number.set_value
+            target:
+              entity_id: number.solax_remotecontrol_autorepeat_duration
+            data:
+              value: "0"
+          - action: select.select_option
+            target:
+              entity_id: select.solax_remotecontrol_power_control_mode
+            data:
+              option: "Mode 8 - PV and BAT control - Duration"
+          - action: button.press
+            target:
+              entity_id: button.solax_powercontrolmode8_trigger
+
+      # --- ZÁPORNÁ CENA ---
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.current_buy_electricity_price_15min
+            below: 0
+        sequence:
+          - action: number.set_value
+            target:
+              entity_id: number.solax_remotecontrol_autorepeat_duration
+            data:
+              value: "1000"
+
+          - choose:
+              # --- TOP 5: Nabíjení ze sítě ---
+              - conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.current_buy_electricity_15min_order
+                    below: 6
+                sequence:
+                  - action: select.select_option
+                    target:
+                      entity_id: select.solax_remotecontrol_power_control_mode
+                    data:
+                      option: "Negative Injection and Consumption Price"
+                  - action: button.press
+                    target:
+                      entity_id: button.solax_powercontrolmode8_trigger
+
+            # --- BĚŽNÁ ZÁPORNÁ: Zmrazení ---
+            default:
+              - action: number.set_value
+                target:
+                  entity_id: number.solax_remotecontrol_pv_power_limit
+                data:
+                  value: "50"
+              - action: number.set_value
+                target:
+                  entity_id: number.solax_remotecontrol_push_mode_power_8_9
+                data:
+                  value: "1"
+              - action: select.select_option
+                target:
+                  entity_id: select.solax_remotecontrol_power_control_mode
+                data:
+                  option: "Mode 8 - PV and BAT control - Duration"
+              - action: button.press
+                target:
+                  entity_id: button.solax_powercontrolmode8_trigger
