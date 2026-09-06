@@ -1,0 +1,234 @@
+alias: Řízení bojleru OKHE Smart
+description: >-
+  Jednotná stavová automatizace s ochranou zápisů do EEPROM bojleru přes ESP32
+  a hold-last-state při nedostupnosti vstupních dat.
+
+triggers:
+  - trigger: state
+    entity_id:
+      - sensor.current_buy_electricity_price_15min
+      - sensor.current_sell_electricity_price_15min
+      - sensor.buy_cheapest_electricity_today_15min
+      - binary_sensor.buy_electricity_is_cheapest_2_hours_block_15min
+      - alarm_control_panel.jablotron_sekce_vse
+      - sensor.solax_battery_capacity
+      - sensor.bojler_water_heater_temp1
+      - sensor.bojler_water_heater_temp2
+    to: null
+
+  - trigger: time
+    at: "15:00:00"
+
+  - trigger: time
+    at: "16:00:00"
+
+actions:
+  # Hold-last-state:
+  # Pokud některý rozhodovací vstup nemá použitelnou hodnotu,
+  # neprováděj žádnou změnu bojleru.
+  - if:
+      - condition: template
+        value_template: >-
+          {{
+            not (
+              states('sensor.current_buy_electricity_price_15min') | is_number
+              and states('sensor.current_sell_electricity_price_15min') | is_number
+              and states('sensor.buy_cheapest_electricity_today_15min') | is_number
+              and states('sensor.solax_battery_capacity') | is_number
+              and states('sensor.bojler_water_heater_temp1') | is_number
+              and states('sensor.bojler_water_heater_temp2') | is_number
+              and has_value('binary_sensor.buy_electricity_is_cheapest_2_hours_block_15min')
+              and has_value('alarm_control_panel.jablotron_sekce_vse')
+            )
+          }}
+    then:
+      - stop: >-
+          Hold last boiler state - one or more decision inputs are
+          unavailable, unknown or invalid.
+
+  - choose:
+      # 1. Záporná nákupní cena -> maximální ohřev na 80 °C
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.current_buy_electricity_price_15min
+            below: 0
+        sequence:
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ not is_state('select.bojler_water_heater_mode', 'MANUAL') }}
+            then:
+              - action: select.select_option
+                target:
+                  entity_id: select.bojler_water_heater_mode
+                data:
+                  option: MANUAL
+
+          - if:
+              - condition: template
+                value_template: >-
+                  {{
+                    state_attr(
+                      'climate.bojler_water_heater_thermostat',
+                      'temperature'
+                    ) | float(-1) != 80
+                  }}
+            then:
+              - action: climate.set_temperature
+                target:
+                  entity_id: climate.bojler_water_heater_thermostat
+                data:
+                  temperature: 80
+
+      # 2. Záporná výkupní cena + kladná nejlevnější nákupní cena
+      #    + baterie alespoň 60 % -> ohřev na 75 °C
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.current_sell_electricity_price_15min
+            below: 0
+
+          - condition: numeric_state
+            entity_id: sensor.buy_cheapest_electricity_today_15min
+            above: 0
+
+          - condition: numeric_state
+            entity_id: sensor.solax_battery_capacity
+            above: 59
+
+        sequence:
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ not is_state('select.bojler_water_heater_mode', 'MANUAL') }}
+            then:
+              - action: select.select_option
+                target:
+                  entity_id: select.bojler_water_heater_mode
+                data:
+                  option: MANUAL
+
+          - if:
+              - condition: template
+                value_template: >-
+                  {{
+                    state_attr(
+                      'climate.bojler_water_heater_thermostat',
+                      'temperature'
+                    ) | float(-1) != 75
+                  }}
+            then:
+              - action: climate.set_temperature
+                target:
+                  entity_id: climate.bojler_water_heater_thermostat
+                data:
+                  temperature: 75
+
+      # 3. Nejlevnější dvouhodinový blok + někdo doma
+      #    + voda pod 65 °C -> ohřev na 65 °C
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.buy_electricity_is_cheapest_2_hours_block_15min
+            state: "on"
+
+          - condition: numeric_state
+            entity_id: sensor.bojler_water_heater_temp2
+            below: 65
+
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: alarm_control_panel.jablotron_sekce_vse
+                state: armed_away
+
+        sequence:
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ not is_state('select.bojler_water_heater_mode', 'MANUAL') }}
+            then:
+              - action: select.select_option
+                target:
+                  entity_id: select.bojler_water_heater_mode
+                data:
+                  option: MANUAL
+
+          - if:
+              - condition: template
+                value_template: >-
+                  {{
+                    state_attr(
+                      'climate.bojler_water_heater_thermostat',
+                      'temperature'
+                    ) | float(-1) != 65
+                  }}
+            then:
+              - action: climate.set_temperature
+                target:
+                  entity_id: climate.bojler_water_heater_thermostat
+                data:
+                  temperature: 65
+
+      # 4. Bezpečnostní dohřev mezi 15:00-16:00,
+      #    pokud je někdo doma a voda je pod 45 °C
+      - conditions:
+          - condition: time
+            after: "15:00:00"
+            before: "16:00:00"
+
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: alarm_control_panel.jablotron_sekce_vse
+                state: armed_away
+
+          - condition: or
+            conditions:
+              - condition: numeric_state
+                entity_id: sensor.bojler_water_heater_temp1
+                below: 45
+
+              - condition: numeric_state
+                entity_id: sensor.bojler_water_heater_temp2
+                below: 45
+
+        sequence:
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ not is_state('select.bojler_water_heater_mode', 'MANUAL') }}
+            then:
+              - action: select.select_option
+                target:
+                  entity_id: select.bojler_water_heater_mode
+                data:
+                  option: MANUAL
+
+          - if:
+              - condition: template
+                value_template: >-
+                  {{
+                    state_attr(
+                      'climate.bojler_water_heater_thermostat',
+                      'temperature'
+                    ) | float(-1) != 45
+                  }}
+            then:
+              - action: climate.set_temperature
+                target:
+                  entity_id: climate.bojler_water_heater_thermostat
+                data:
+                  temperature: 45
+
+    default:
+      - if:
+          - condition: template
+            value_template: >-
+              {{ not is_state('select.bojler_water_heater_mode', 'ANTIFREEZE') }}
+        then:
+          - action: select.select_option
+            target:
+              entity_id: select.bojler_water_heater_mode
+            data:
+              option: ANTIFREEZE
+
+mode: restart
