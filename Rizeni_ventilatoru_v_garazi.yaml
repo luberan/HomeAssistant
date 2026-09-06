@@ -1,0 +1,169 @@
+alias: Ovládání ventilátoru v garáži
+description: >
+  Letní chlazení v nejchladnější části dne a zimní větrání
+  v době solárního poledne. Absolutní čas vypnutí odolný proti restartu.
+
+triggers:
+  # Letní režim - 2 hodiny před východem slunce
+  - trigger: sun.sunrise
+    options:
+      offset:
+        hours: 2
+      offset_type: before
+    id: zapnout_rano
+
+  # Zimní režim - přesně v solární poledne
+  - trigger: sun.solar_noon
+    id: zapnout_v_poledne
+
+  # Každé zapnutí ventilátoru nastaví čas vypnutí,
+  # včetně případného ručního zapnutí.
+  - trigger: state
+    entity_id:
+      - switch.shelly_ventilator_garaz_switch_0
+    from: "off"
+    to: "on"
+    id: nastavit_casovac
+
+  # Absolutní čas vypnutí
+  - trigger: time
+    at: input_datetime.pocitadlo_behu_ventilatoru_v_garazi
+    id: vypnout_ventilator
+
+  # Ošetření restartu Home Assistantu
+  - trigger: homeassistant
+    event: start
+    id: kontrola_po_restartu
+
+actions:
+  - choose:
+
+      # LETNÍ REŽIM
+      - conditions:
+          - condition: trigger
+            id: zapnout_rano
+
+          # Garáž musí být teplejší než 15 °C
+          - condition: numeric_state
+            entity_id: sensor.teplota_garaz_temperature
+            above: 15
+
+          # Ventilátor dnes ještě neběžel
+          - condition: template
+            value_template: >
+              {% set ts = state_attr(
+                'input_datetime.pocitadlo_behu_ventilatoru_v_garazi',
+                'timestamp'
+              ) %}
+              {{
+                ts is none
+                or (as_datetime(ts) | as_local).date() != now().date()
+              }}
+
+          # Pokud je venkovní čidlo dostupné, musí být venku
+          # alespoň o 2 °C chladněji než v garáži.
+          # Pokud čidlo dostupné není, jde o fail-safe -> spustit.
+          - condition: template
+            value_template: >
+              {% set outdoor =
+                'sensor.smo_s40_current_outdoor_temperature_bt1' %}
+              {% set garage =
+                'sensor.teplota_garaz_temperature' %}
+
+              {{
+                not has_value(outdoor)
+                or
+                (
+                  states(outdoor) | float(999)
+                  <=
+                  states(garage) | float(-999) - 2
+                )
+              }}
+
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.shelly_ventilator_garaz_switch_0
+
+      # ZIMNÍ REŽIM
+      - conditions:
+          - condition: trigger
+            id: zapnout_v_poledne
+
+          # Garáž 15 °C nebo méně
+          - condition: template
+            value_template: >
+              {{
+                has_value('sensor.teplota_garaz_temperature')
+                and
+                states('sensor.teplota_garaz_temperature') | float(999) <= 15
+              }}
+
+          # Ventilátor dnes ještě neběžel
+          - condition: template
+            value_template: >
+              {% set ts = state_attr(
+                'input_datetime.pocitadlo_behu_ventilatoru_v_garazi',
+                'timestamp'
+              ) %}
+              {{
+                ts is none
+                or (as_datetime(ts) | as_local).date() != now().date()
+              }}
+
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.shelly_ventilator_garaz_switch_0
+
+      # PŘI KAŽDÉM ZAPNUTÍ NASTAV VYPNUTÍ ZA 3 HODINY
+      - conditions:
+          - condition: trigger
+            id: nastavit_casovac
+
+        sequence:
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.pocitadlo_behu_ventilatoru_v_garazi
+            data:
+              timestamp: >
+                {{ (now() + timedelta(hours=3)).timestamp() }}
+
+      # VYPNUTÍ PO UPLYNUTÍ 3 HODIN
+      - conditions:
+          - condition: trigger
+            id: vypnout_ventilator
+
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.shelly_ventilator_garaz_switch_0
+
+      # WATCHDOG PO RESTARTU HA
+      - conditions:
+          - condition: trigger
+            id: kontrola_po_restartu
+
+          - condition: state
+            entity_id: switch.shelly_ventilator_garaz_switch_0
+            state: "on"
+
+          # Pokud už měl být ventilátor vypnutý,
+          # případně se deadline nepodaří zjistit, vypni jej.
+          - condition: template
+            value_template: >
+              {% set ts = state_attr(
+                'input_datetime.pocitadlo_behu_ventilatoru_v_garazi',
+                'timestamp'
+              ) %}
+              {{
+                ts is none
+                or ts | float(0) <= now().timestamp()
+              }}
+
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.shelly_ventilator_garaz_switch_0
+
+mode: queued
